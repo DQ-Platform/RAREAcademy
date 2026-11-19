@@ -1,7 +1,7 @@
 const programs=[
 ["🏛️","Dövlət qulluğu","Uğurlu karyera üçün hazırlıq"],["🪖","Səfərbərlik","Vətən xidmətə hazırlıq"],["⚖️","İcra məmuru","Qanunla peşəkar hazırlıq"],["🌍","Miqrasiya","Beynəlxalq imkanlar üçün hazırlıq"],
 ["🎓","Magistratura","Ali təhsil üçün hazırlıq"],["🛃","Gömrük hazırlığı","Peşəkar bilik, uğurlu karyera"],["📖","Abituriyent","Ali təhsil üçün hazırlıq"],["🗣️","Xarici dillər","Rus, Alman və İngilis dili"],["♟️","Şahmat dərsləri","Strategiya və məntiq"]];
-document.getElementById('cards').innerHTML=programs.map(p=>`<a class="card" href="#"><span class="ic">${p[0]}</span><div><b>${p[1]}</b><small>${p[2]}</small></div><i>→</i></a>`).join('');
+document.getElementById('cards').innerHTML=programs.map((p,i)=>`<a class="card" href="#"><span class="ic"><img src="assets/p${i+1}.jpg" alt="" loading="lazy"></span><div><b>${p[1]}</b><small>${p[2]}</small></div><i>→</i></a>`).join('');
 
 const slides=[
 ["Biliklə daha güclü,<br>hədəflərə <em>daha yaxın!</em>","Peşəkar tədris, innovativ yanaşma və uğura aparan düzgün istiqamət – hamısı bir platformada!"],
