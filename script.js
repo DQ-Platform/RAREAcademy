@@ -153,3 +153,10 @@ $('#newsletter').addEventListener('submit', async e => {
 });
 
 $('#year').textContent = new Date().getFullYear();
+
+;(function(){try{
+  if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  var els=document.querySelectorAll('.sec-head,.cards li,.why-in>div,.why-grid li,.exam-in>*,.foot>div');
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+  els.forEach(function(el,i){el.classList.add('rv');el.style.transitionDelay=((i%5)*70)+'ms';io.observe(el)});
+}catch(e){}})();
