@@ -381,6 +381,21 @@ footer{padding-top:64px}
   .cards li:nth-child(n+5) .card i{width:34px;height:34px}
 }
 @media(min-width:1101px){.foot{grid-template-columns:1.4fr 1fr 1.3fr .9fr}}
+
+/* ===== Giriş / hesab (Google ilə davam et) ===== */
+.menu [hidden]{display:none!important}
+.menu .acct-in{margin-left:10px}
+.menu .acct-in .btn{padding:11px 20px;border-radius:8px;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.menu .acct>button{gap:9px}
+.av{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;overflow:hidden;background:var(--blue);color:#fff;font-size:13px;font-weight:700;letter-spacing:0;flex:none}
+.av img{width:100%;height:100%;object-fit:cover}
+.menu .acct .sub{left:auto;right:0}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:13px 16px;border:1.5px solid #c9d8f3;border-radius:8px;background:#fff;color:#1f1f1f;font-weight:600;font-size:15px;transition:.2s}
+.gbtn:hover{background:#F4F7FC;border-color:var(--blue)}.gbtn:disabled{opacity:.6;cursor:wait}
+.gbtn svg{width:20px;height:20px;stroke:none}
+.dlg .fine{font-size:12.5px;color:#6a7aa0;line-height:1.45}
+.dlg .mail{font-size:14px;color:#4a5d86;word-break:break-all}
+@media(max-width:1180px){.menu .acct-in{margin:10px 0 4px}.menu .acct-in .btn{width:100%}.menu .acct .sub{right:auto}}
 </style>
 </head>
 <body>
@@ -427,7 +442,7 @@ footer{padding-top:64px}
     
   </div>
   <div class="tr">
-    <a href="#" data-link="cabinet"><svg class="ic-s"><use href="#i-user"/></svg>Şəxsi kabinet</a>
+    <a href="#" data-auth="cabinet"><svg class="ic-s"><use href="#i-user"/></svg>Şəxsi kabinet</a>
     <span class="sep" aria-hidden="true"></span>
     <a href="#" data-link="telegram" aria-label="Telegram"><svg class="ic-s"><use href="#i-tg"/></svg></a>
     <a href="#" data-link="youtube" aria-label="YouTube"><svg class="ic-s"><use href="#i-yt"/></svg></a>
@@ -448,6 +463,9 @@ footer{padding-top:64px}
     <li><a href="#why">Müəllimlərimiz</a></li>
     <li><a href="#newsletter">Xəbərlər</a></li>
     <li><a href="#contact">Əlaqə</a></li>
+    <li class="acct-in" id="acctIn"><button class="btn outline" type="button" data-auth="login"><svg class="ic-s"><use href="#i-user"/></svg>Daxil ol</button></li>
+    <li class="dd acct" id="acctMenu" hidden><button type="button" aria-expanded="false"><span class="av" id="acctAv" aria-hidden="true"></span><span id="acctName"></span><svg class="ic-s"><use href="#i-down"/></svg></button>
+      <ul class="sub"><li><a href="#" data-auth="profile">Profilim</a></li><li><a href="#" data-auth="logout">Çıxış</a></li></ul></li>
     <li class="reg"><button class="btn green" type="button" data-open="register"><svg class="ic-s"><use href="#i-user"/></svg>Qeydiyyat<svg class="ic-s"><use href="#i-arrow"/></svg></button></li>
   </ul>
 </nav></header>
@@ -536,6 +554,23 @@ footer{padding-top:64px}
   <label>İstiqamət<select name="program" id="program"><option value="">Seçin</option><option>Dövlət qulluğu</option><option>Səfərbərlik</option><option>İcra məmuru</option><option>Miqrasiya</option><option>Magistratura</option><option>Gömrük hazırlığı</option><option>Abituriyent</option><option>Xarici dillər</option><option>Şahmat dərsləri</option></select></label>
   <p class="err" id="regErr" role="alert"></p>
   <button class="btn green big" type="submit">Göndər<svg class="ic-s"><use href="#i-arrow"/></svg></button>
+</form></dialog>
+
+<dialog id="login" aria-labelledby="loginTitle"><div class="dlg">
+  <button class="x" type="button" data-close aria-label="Bağla"><svg><use href="#i-x"/></svg></button>
+  <h3 id="loginTitle">Daxil ol</h3><p>Hesabınıza Google ilə təhlükəsiz daxil olun – ayrıca parol tələb olunmur.</p>
+  <button class="gbtn" type="button" id="googleBtn"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google ilə davam et</button>
+  <p class="err" id="loginErr" role="alert"></p>
+  <p class="fine">Davam etməklə adınız, e-poçtunuz və profil şəkliniz RARE Academy-nin mərkəzi bazasında saxlanılır və yalnız tədris xidməti üçün istifadə olunur.</p>
+</div></dialog>
+
+<dialog id="profile" aria-labelledby="profTitle"><form class="dlg" id="profileForm" novalidate>
+  <button class="x" type="button" data-close aria-label="Bağla"><svg><use href="#i-x"/></svg></button>
+  <h3 id="profTitle">Profilim</h3><p class="mail" id="profEmail"></p>
+  <label>Ad və soyad<input name="name" required autocomplete="name"></label>
+  <label>Mobil nömrə<input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="050 000 00 00"></label>
+  <p class="err" id="profErr" role="alert"></p>
+  <button class="btn green big" type="submit">Yadda saxla</button>
 </form></dialog>
 
 <dialog id="video" aria-label="Təqdimat videosu"><div class="dlg wide">
@@ -725,5 +760,6 @@ $('#year').textContent = new Date().getFullYear();
   up.addEventListener('click',function(){window.scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'})});
 }catch(e){}})();
 </script>
+<script type="module" src="auth.js"></script>
 </body>
 </html>

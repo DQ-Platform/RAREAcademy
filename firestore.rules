@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function str(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
+    function optStr(v, max) { return v == null || (v is string && v.size() <= max); }
+
+    // İstifadəçi profilləri: users/{uid}
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasAll(['email','fullName','phone','photoURL','role','createdAt','updatedAt'])
+        && request.resource.data.keys().hasOnly(['email','fullName','phone','photoURL','role','createdAt','updatedAt'])
+        && request.resource.data.role == 'student'
+        && optStr(request.resource.data.fullName, 120)
+        && request.resource.data.phone == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      // yalnız ad və telefon dəyişə bilər (role/email dəyişmək olmaz)
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName','phone','updatedAt'])
+        && str(request.resource.data.fullName, 3, 120)
+        && (request.resource.data.phone == null || str(request.resource.data.phone, 7, 20))
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Qeydiyyat müraciətləri: hamı göndərə bilər, oxuyub idarə edən yalnız admin
+    match /registrations/{id} {
+      allow create: if request.resource.data.keys().hasAll(['fullName','phone','program','source','status','userId','createdAt'])
+        && request.resource.data.keys().hasOnly(['fullName','phone','program','source','status','userId','createdAt'])
+        && str(request.resource.data.fullName, 3, 120)
+        && str(request.resource.data.phone, 7, 20)
+        && (request.resource.data.program == null || str(request.resource.data.program, 1, 80))
+        && request.resource.data.source == 'website'
+        && request.resource.data.status == 'new'
+        && (request.resource.data.userId == null || (signedIn() && request.resource.data.userId == request.auth.uid))
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Xəbər abunələri: sənəd ID-si = kiçik hərflə e-poçt (təkrar abunə mümkün deyil)
+    match /newsletter/{email} {
+      allow create: if request.resource.data.keys().hasOnly(['email','createdAt'])
+        && request.resource.data.email == email
+        && email == email.lower()
+        && str(email, 5, 254)
+        && email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$')
+        && request.resource.data.createdAt == request.time;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    // Adminlər yalnız Firebase konsolundan əlavə olunur
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

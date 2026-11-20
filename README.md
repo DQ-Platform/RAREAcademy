@@ -7,6 +7,9 @@ Statik sayt (HTML + CSS + JS), build tələb olunmur.
 ## Quruluş
 - `index.html` – səhifə
 - `style.css`, `script.js`
+- `auth.js` – Firebase (Firestore) mərkəzi baza + Google ilə giriş
+- `firestore.rules` – verilənlər bazasının təhlükəsizlik qaydaları
+- `SETUP.md` – quraşdırma təlimatı
 - `assets/` – şəkillər (hero.jpg, p1–p9.jpg, rare-symbol.png, favicon.png)
 
 ## Tənzimləmə
