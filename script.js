@@ -7,8 +7,10 @@ const CONFIG = {
   youtubeUrl: '',     // https://youtube.com/@...
   instagramUrl: '',   // https://instagram.com/...
   videoUrl: '',       // YouTube embed (https://www.youtube.com/embed/ID) və ya .mp4 faylı
-  contactEmail: 'info@rareacademy.az',
-  formEndpoint: ''    // Formspree və s.: boşdursa məlumat email proqramı ilə göndərilir
+  contactEmail: '',   // e-poçt hazır olanda yazın, məs: 'info@rareacademy.az'
+  whatsappNumber: '994504305162',   // e-poçt olmadıqda qeydiyyat WhatsApp-a yönləndirilir
+  // E-poçt hazır olanda: 'https://formsubmit.co/ajax/SIZIN_EMAIL' yazın (ilk göndərişdən sonra gələn təsdiq məktubunda “Activate” basın).
+  formEndpoint: ''
 };
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -117,11 +119,16 @@ $$('[data-open]').forEach(b => b.addEventListener('click', () => {
 /* Göndərmə (endpoint varsa fetch, yoxsa email proqramı) */
 async function submitData(subject, fields) {
   if (CONFIG.formEndpoint) {
-    const r = await fetch(CONFIG.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ subject, ...fields }) });
-    if (!r.ok) throw new Error('send');
+    const r = await fetch(CONFIG.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ _subject: subject, _template: 'table', _captcha: 'false', ...fields }) });
+    let j = {}; try { j = await r.json(); } catch {}
+    if (!r.ok || j.success === false || j.success === 'false') throw new Error('send');
     return 'sent';
   }
   const body = Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n');
+  if (!CONFIG.contactEmail) {
+    window.open(`https://wa.me/${CONFIG.whatsappNumber}?text=${encodeURIComponent(subject + '\n' + body)}`, '_blank', 'noopener');
+    return 'whatsapp';
+  }
   location.href = `mailto:${CONFIG.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   return 'mailto';
 }
@@ -137,13 +144,13 @@ $('#regForm').addEventListener('submit', async e => {
   try {
     const mode = await submitData('RARE Academy – yeni qeydiyyat', { Ad: name.value.trim(), Telefon: phone.value.trim(), İstiqamət: f.program.value || 'Seçilməyib' });
     closeDialog($('#register')); f.reset();
-    toast(mode === 'sent' ? 'Müraciətiniz qəbul olundu. Tezliklə sizinlə əlaqə saxlayacağıq.' : 'Email proqramınız açıldı – mesajı göndərin.');
+    toast(mode === 'sent' ? 'Müraciətiniz qəbul olundu. Tezliklə sizinlə əlaqə saxlayacağıq.' : mode === 'whatsapp' ? 'WhatsApp açıldı – hazır mesajı göndərin.' : 'Email proqramınız açıldı – mesajı göndərin.');
   } catch { err.textContent = 'Göndərmək alınmadı. Zəhmət olmasa 050 430 51 62 nömrəsinə zəng edin.'; }
   btn.disabled = false;
 });
 
 /* Xəbər abunəliyi */
-$('#newsletter').addEventListener('submit', async e => {
+$('#newsletter')?.addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target, msg = $('#newsMsg'), em = f.email.value.trim();
   msg.className = '';
@@ -159,4 +166,13 @@ $('#year').textContent = new Date().getFullYear();
   var els=document.querySelectorAll('.sec-head,.cards li,.why-in>div,.why-grid li,.exam-in>*,.foot>div');
   var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12,rootMargin:'0px 0px -40px 0px'});
   els.forEach(function(el,i){el.classList.add('rv');el.style.transitionDelay=((i%5)*70)+'ms';io.observe(el)});
+}catch(e){}})();
+
+;(function(){try{
+  var bar=document.createElement('div');bar.className='progress';bar.setAttribute('aria-hidden','true');document.body.appendChild(bar);
+  var up=document.createElement('button');up.type='button';up.className='totop';up.setAttribute('aria-label','Yuxarı qayıt');up.innerHTML='<svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>';document.body.appendChild(up);
+  var nav=document.querySelector('.nav-shell');
+  function on(){var h=document.documentElement,y=h.scrollTop||document.body.scrollTop,m=h.scrollHeight-h.clientHeight;bar.style.width=(m>0?y/m*100:0)+'%';up.classList.toggle('show',y>700);if(nav)nav.classList.toggle('scrolled',y>10)}
+  addEventListener('scroll',on,{passive:true});on();
+  up.addEventListener('click',function(){window.scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'})});
 }catch(e){}})();
