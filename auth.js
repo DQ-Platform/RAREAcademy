@@ -3,7 +3,7 @@
    qeydiyyat müraciətləri, "90 gün xatırla". Quraşdırma: SUPABASE-SETUP.md
    Konfiqurasiya dəyərləri ictimaidir (təhlükəsizliyi supabase/schema.sql-dəki RLS qaydaları təmin edir).
    ===================================================================== */
-import { SUPABASE_URL, SUPABASE_ANON_KEY, GOOGLE_ENABLED, CEO_EMAIL } from './supabase-config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, GOOGLE_ENABLED, CEO_EMAIL, OTP_LENGTH } from './supabase-config.js';
 import { applySite } from './cms.js';
 const SB_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 
@@ -42,6 +42,7 @@ if (!GOOGLE_ENABLED || !ready) {                      // Google qoşulmayıbsa d
   const g = $id('googleBtn'); if (g) g.style.display = 'none';
   const o = document.querySelector('#register .or'); if (o) o.style.display = 'none';
 }
+{ const ci = $id('codeForm') && $id('codeForm').code; if (ci) { ci.maxLength = OTP_LENGTH; ci.placeholder = '•'.repeat(OTP_LENGTH); } }
 const norm = u => u ? { uid: u.id, email: u.email || '', emailVerified: !!u.email_confirmed_at,
   displayName: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '',
   photoURL: (u.user_metadata && (u.user_metadata.avatar_url || u.user_metadata.picture)) || '' } : null;
@@ -190,13 +191,13 @@ $id('emailForm').addEventListener('submit', async e => {
   btn.disabled = false;
 });
 $id('codeForm').code.addEventListener('input', e => {
-  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
-  if (e.target.value.length === 6) e.target.form.requestSubmit();
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH);
+  if (e.target.value.length === OTP_LENGTH) e.target.form.requestSubmit();
 });
 $id('codeForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target, err = $id('codeErr'), btn = $id('codeBtn'), code = f.code.value.trim(); err.textContent = '';
-  if (!/^\d{6}$/.test(code)) return fail(err, '6 rəqəmli kodu daxil edin.', f.code);
+  if (!new RegExp('^\\d{' + OTP_LENGTH + '}$').test(code)) return fail(err, OTP_LENGTH + ' rəqəmli kodu daxil edin.', f.code);
   btn.disabled = true;
   try {
     setPersist(emailCtx.remember);

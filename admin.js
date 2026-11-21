@@ -1,5 +1,5 @@
 /* RARE Academy – Admin / CEO paneli. Giriş: e-poçt kodu (və ya Google). CEO_EMAIL avtomatik tam səlahiyyətlidir. */
-import { SUPABASE_URL, SUPABASE_ANON_KEY, GOOGLE_ENABLED, CEO_EMAIL } from './supabase-config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, GOOGLE_ENABLED, CEO_EMAIL, OTP_LENGTH } from './supabase-config.js';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const h = (tag, a = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -58,7 +58,7 @@ else {
   const nowIso = () => new Date().toISOString();
 
   /* ---------- Giriş ---------- */
-  let otpEmail = '';
+  let otpEmail = ''; $('#gCode').maxLength = OTP_LENGTH; $('#gCode').placeholder = OTP_LENGTH + ' rəqəmli kod';
   $('#gForm').onsubmit = async e => {
     e.preventDefault(); const em = $('#gEmail').value.trim().toLowerCase(); $('#gMsg').textContent = '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return void ($('#gMsg').textContent = 'Düzgün e-poçt ünvanı daxil edin.');
@@ -70,7 +70,7 @@ else {
   };
   $('#gCodeForm').onsubmit = async e => {
     e.preventDefault(); const code = $('#gCode').value.replace(/\D/g, ''); $('#gMsg').textContent = '';
-    if (code.length !== 6) return void ($('#gMsg').textContent = '6 rəqəmli kodu daxil edin.');
+    if (code.length !== OTP_LENGTH) return void ($('#gMsg').textContent = OTP_LENGTH + ' rəqəmli kodu daxil edin.');
     const b = $('#gVerify'); b.disabled = true;
     const { error } = await sb.auth.verifyOtp({ email: otpEmail, token: code, type: 'email' });
     b.disabled = false;
