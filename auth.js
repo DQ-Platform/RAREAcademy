@@ -161,7 +161,11 @@ async function sendCode({ email, mode, name }) {
     if (!r.data) throw userErr(NO_ACTIVE);
   }
   const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, data: { full_name: name } } });
-  if (error) { if (error.status === 429) throw error; throw userErr('E-poçt göndərilmədi. Bir az sonra yenidən cəhd edin.'); }
+  if (error) {
+    console.error('[RARE] signInWithOtp xətası', error);
+    if (error.status === 429) throw error;
+    throw userErr('E-poçt göndərilmədi. Bir az sonra yenidən cəhd edin. (' + (error.code || error.status || 'xəta') + ': ' + String(error.message || '').slice(0, 90) + ')');
+  }
 }
 $id('emailForm').addEventListener('submit', async e => {
   e.preventDefault();
