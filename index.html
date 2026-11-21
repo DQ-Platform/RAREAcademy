@@ -781,6 +781,7 @@ async function submitData(subject, fields) {
 const phoneOk = v => v.replace(/\D/g, '').length >= 9;
 
 $('#regForm').addEventListener('submit', async e => {
+  if (!e.target.phone) return;                  // auth.js-in formaları (emailForm, codeForm...) öz işləyicilərinə malikdir
   e.preventDefault();
   const f = e.target, err = $('#regErr'), name = f.name, phone = f.phone;
   [name, phone].forEach(i => i.removeAttribute('aria-invalid')); err.textContent = '';

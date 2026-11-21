@@ -1,13 +1,14 @@
-/* Admin panelində edilən dəyişiklikləri (Firestore: site/settings, site/content) sayta tətbiq edir. */
+/* Admin panelində edilən dəyişiklikləri (Supabase: site cədvəli – settings, content) sayta tətbiq edir. */
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtTitle = s => esc(s).replace(/\*([^*]+)\*/g, '<em>$1</em>').replace(/\r?\n/g, '<br>');
 const okUrl = u => /^https?:\/\//i.test(u || '');
 const telHref = p => { const d = String(p).replace(/\D/g, ''); return d ? 'tel:+' + (d.startsWith('994') ? d : d.startsWith('0') ? '994' + d.slice(1) : d) : ''; };
 
-export async function applySite(db, F) {
+export async function applySite(sb) {
   try {
-    const [s, c] = await Promise.all([F.getDoc(F.doc(db, 'site', 'settings')), F.getDoc(F.doc(db, 'site', 'content'))]);
-    const st = s.exists() ? s.data() : {}, ct = c.exists() ? c.data() : {};
+    const r = await sb.from('site').select('doc,data'); if (r.error) throw r.error;
+    const m = Object.fromEntries((r.data || []).map(x => [x.doc, x.data || {}]));
+    const st = m.settings || {}, ct = m.content || {};
     window.RARE_SETTINGS = st;
 
     document.querySelectorAll('[data-cms]').forEach(n => { const v = ct[n.dataset.cms]; if (typeof v === 'string' && v.trim()) n.textContent = v; });

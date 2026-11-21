@@ -1,6 +1,5 @@
-/* RARE Academy – Admin / CEO paneli. Giriş: Google. CEO_EMAIL avtomatik tam səlahiyyətlidir. */
-import { FIREBASE_CONFIG, CEO_EMAIL } from './firebase-config.js';
-const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+/* RARE Academy – Admin / CEO paneli. Giriş: e-poçt kodu (və ya Google). CEO_EMAIL avtomatik tam səlahiyyətlidir. */
+import { SUPABASE_URL, SUPABASE_ANON_KEY, GOOGLE_ENABLED, CEO_EMAIL } from './supabase-config.js';
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const h = (tag, a = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -39,57 +38,92 @@ function table(head, rows, empty) {
   return h('div', { class: 'tw' }, h('table', {}, h('thead', {}, h('tr', {}, head.map(x => h('th', {}, x)))), h('tbody', {}, rows)));
 }
 
-const gate = (msg, denied) => { $('#gate').hidden = false; $('#app').hidden = true; $('#gMsg').textContent = msg || ''; $('#gOut').hidden = !denied; $('#gLogin').hidden = !!denied; };
+const gate = (msg, denied) => { $('#gate').hidden = false; $('#app').hidden = true; $('#gMsg').textContent = msg || ''; $('#gOut').hidden = !denied; $('#gForms').hidden = !!denied; $('#gLogin').hidden = !!denied || !GOOGLE_ENABLED; };
 
-if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.projectId) gate('Firebase konfiqurasiyası doldurulmayıb (firebase-config.js).');
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) gate('Supabase konfiqurasiyası doldurulmayıb (supabase-config.js).');
 else {
-  const [appM, A, F] = await Promise.all(['app', 'auth', 'firestore'].map(n => import(FB + 'firebase-' + n + '.js')));
-  const app = appM.initializeApp(FIREBASE_CONFIG), auth = A.getAuth(app), db = F.getFirestore(app); auth.languageCode = 'az';
-  const col = n => F.collection(db, n);
+  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
+  const storage = {                                      // saytla eyni sessiya: harada saxlanıbsa, orada davam edir
+    getItem: k => { try { const v = sessionStorage.getItem(k); return v !== null ? v : localStorage.getItem(k); } catch (e) { return null; } },
+    setItem: k => k, removeItem: k => k };
+  storage.setItem = (k, v) => { try { (sessionStorage.getItem(k) !== null ? sessionStorage : localStorage).setItem(k, v); } catch (e) {} };
+  storage.removeItem = k => { try { sessionStorage.removeItem(k); localStorage.removeItem(k); } catch (e) {} };
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' } });
   const S = { regs: [], users: [], subs: [], admins: new Map(), counts: {}, settings: {}, content: {}, texts: null };
   let me = null, role = null;
   const isCeo = () => role === 'ceo';
+  const chk = r => { if (r.error) throw r.error; return r.data; };
+  const mut = async q => { const d = chk(await q.select()); if (!d || !d.length) throw new Error('denied'); return d; };   // RLS səssiz rədd edərsə də xəta verir
+  const tm = x => x ? new Date(x) : null;
+  const nowIso = () => new Date().toISOString();
 
-  $('#gLogin').onclick = async () => {
-    const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
-    try { await A.signInWithPopup(auth, p); }
-    catch (e) { if (e.code === 'auth/popup-blocked') A.signInWithRedirect(auth, p); else if (!/popup-closed|cancelled/.test(e.code)) $('#gMsg').textContent = 'Giriş alınmadı. Yenidən cəhd edin.'; }
+  /* ---------- Giriş ---------- */
+  let otpEmail = '';
+  $('#gForm').onsubmit = async e => {
+    e.preventDefault(); const em = $('#gEmail').value.trim().toLowerCase(); $('#gMsg').textContent = '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return void ($('#gMsg').textContent = 'Düzgün e-poçt ünvanı daxil edin.');
+    const b = $('#gSend'); b.disabled = true;
+    const { error } = await sb.auth.signInWithOtp({ email: em, options: { shouldCreateUser: true } });
+    b.disabled = false;
+    if (error) return void ($('#gMsg').textContent = error.status === 429 ? 'Çox tez-tez cəhd edildi. Bir az gözləyin.' : 'Kod göndərilmədi. Bir az sonra yenidən cəhd edin.');
+    otpEmail = em; $('#gForm').hidden = true; $('#gCodeForm').hidden = false; $('#gMsg').textContent = 'Kod ' + em + ' ünvanına göndərildi.'; $('#gCode').focus();
   };
-  $('#gOut').onclick = $('#logout').onclick = () => A.signOut(auth);
-  A.getRedirectResult(auth).catch(() => {});
+  $('#gCodeForm').onsubmit = async e => {
+    e.preventDefault(); const code = $('#gCode').value.replace(/\D/g, ''); $('#gMsg').textContent = '';
+    if (code.length !== 6) return void ($('#gMsg').textContent = '6 rəqəmli kodu daxil edin.');
+    const b = $('#gVerify'); b.disabled = true;
+    const { error } = await sb.auth.verifyOtp({ email: otpEmail, token: code, type: 'email' });
+    b.disabled = false;
+    if (error) $('#gMsg').textContent = 'Kod səhvdir və ya vaxtı bitib.';
+  };
+  $('#gBack').onclick = () => { $('#gCodeForm').hidden = true; $('#gForm').hidden = false; $('#gMsg').textContent = ''; };
+  $('#gLogin').onclick = async () => {
+    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } } });
+    if (error) $('#gMsg').textContent = 'Google girişi alınmadı. E-poçt kodu ilə daxil olun.';
+  };
+  $('#gOut').onclick = $('#logout').onclick = () => sb.auth.signOut();
 
-  A.onAuthStateChanged(auth, async u => {
+  async function onUser(u) {
+    if (u && me && u.id === me.id && role) { me = u; return; }     // sekməyə qayıdanda təkrar yükləmə olmasın
     me = u; role = null;
     if (!u) return gate('');
-    if ((u.email || '').toLowerCase() === CEO_EMAIL && u.emailVerified) role = 'ceo';
-    else { try { if ((await F.getDoc(F.doc(db, 'admins', u.uid))).exists()) role = 'admin'; } catch (e) {} }
+    if ((u.email || '').toLowerCase() === CEO_EMAIL && u.email_confirmed_at) role = 'ceo';
+    else { try { const r = await sb.from('admins').select('user_id').eq('user_id', u.id).maybeSingle(); if (r.data) role = 'admin'; } catch (e) {} }
     if (!role) return gate('Bu hesabın (' + u.email + ') admin icazəsi yoxdur.', true);
     $('#gate').hidden = true; $('#app').hidden = false;
     $('#roleBadge').textContent = isCeo() ? 'CEO' : 'Admin'; $('#meMail').textContent = u.email;
     await loadAll();
+  }
+  let chain = Promise.resolve();
+  sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED' || ev === 'PASSWORD_RECOVERY') return;
+    setTimeout(() => { chain = chain.then(() => onUser(session && session.user)).catch(e => console.error(e)); }, 0);
   });
 
   /* ---------- Məlumat yükləmə ---------- */
-  const rows = (snap, f) => snap.docs.map(d => { const x = d.data(); return { id: d.id, ...x, _t: x.createdAt && x.createdAt.toDate ? x.createdAt.toDate() : null, ...(f ? f(x) : {}) }; });
   async function loadAll() {
     $('#refresh').disabled = true;
     try {
-      const lim = (n) => F.query(col(n), F.orderBy('createdAt', 'desc'), F.limit(1000));
-      const [rs, us, ss, ad, st, ct, cR, cU, cS] = await Promise.all([
-        F.getDocs(lim('registrations')), F.getDocs(lim('users')), F.getDocs(lim('newsletter')), F.getDocs(col('admins')),
-        F.getDoc(F.doc(db, 'site', 'settings')), F.getDoc(F.doc(db, 'site', 'content')),
-        F.getCountFromServer(col('registrations')), F.getCountFromServer(col('users')), F.getCountFromServer(col('newsletter'))]);
-      S.regs = rows(rs); S.users = rows(us); S.subs = rows(ss);
-      S.admins = new Map(ad.docs.map(d => [d.id, d.data()]));
-      S.settings = st.exists() ? st.data() : {}; S.content = ct.exists() ? ct.data() : {};
-      S.counts = { regs: cR.data().count, users: cU.data().count, subs: cS.data().count };
+      const lim = t => sb.from(t).select('*').order('created_at', { ascending: false }).limit(1000);
+      const cnt = t => sb.from(t).select('*', { count: 'exact', head: true });
+      const res = await Promise.all([lim('registrations'), lim('profiles'), lim('newsletter'), sb.from('admins').select('*'), sb.from('site').select('doc,data'),
+        cnt('registrations'), cnt('profiles'), cnt('newsletter')]);
+      res.forEach(r => { if (r.error) throw r.error; });
+      const [rs, us, ss, ad, st, cR, cU, cS] = res;
+      S.regs = rs.data.map(r => ({ id: r.id, fullName: r.full_name, email: r.email, program: r.program, status: r.status, note: r.note || '', userId: r.user_id, _t: tm(r.created_at) }));
+      S.users = us.data.map(u => ({ id: u.id, fullName: u.full_name, email: u.email, phone: u.phone, _t: tm(u.created_at) }));
+      S.subs = ss.data.map(x => ({ id: x.email, email: x.email, _t: tm(x.created_at) }));
+      S.admins = new Map(ad.data.map(x => [x.user_id, x]));
+      const site = Object.fromEntries(st.data.map(x => [x.doc, x.data || {}]));
+      S.settings = site.settings || {}; S.content = site.content || {};
+      S.counts = { regs: cR.count, users: cU.count, subs: cS.count };
       renderAll();
     } catch (e) { console.error(e); toast('Məlumat yüklənmədi: ' + (e.code || e.message)); }
     $('#refresh').disabled = false;
   }
   $('#refresh').onclick = loadAll;
 
-  /* ---------- Naviqasiya ---------- */
+/* ---------- Naviqasiya ---------- */
   function go(tab) {
     $$('[id^="tab-"]').forEach(s => { s.hidden = s.id !== 'tab-' + tab; });
     $$('.nv').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
@@ -137,15 +171,15 @@ else {
     const trs = list.map(r => h('tr', {},
       h('td', { class: 'mut' }, fmtDT(r._t)), h('td', {}, h('b', {}, r.fullName)), h('td', {}, r.email), h('td', {}, r.program),
       h('td', {}, (() => { const s = h('select', { onchange: async e => {
-        try { await F.updateDoc(F.doc(db, 'registrations', r.id), { status: e.target.value, updatedAt: F.serverTimestamp() }); r.status = e.target.value; renderDash(); toast('Status yeniləndi.'); }
+        try { await mut(sb.from('registrations').update({ status: e.target.value, updated_at: nowIso() }).eq('id', r.id)); r.status = e.target.value; renderDash(); toast('Status yeniləndi.'); }
         catch (x) { e.target.value = r.status; toast('Yenilənmədi.'); } } },
         Object.entries(STATUS).map(([k, l]) => h('option', { value: k }, l))); s.value = r.status; return s; })()),
       h('td', {}, h('button', { class: 'btn ghost sm', type: 'button', onclick: async () => {
         const v = await askText('Qeyd – ' + r.fullName, r.note); if (v === null) return;
-        try { await F.updateDoc(F.doc(db, 'registrations', r.id), { note: v, updatedAt: F.serverTimestamp() }); r.note = v; renderRegs(); toast('Qeyd saxlanıldı.'); } catch (x) { toast('Saxlanılmadı.'); } } }, r.note ? '✎ ' + (r.note.length > 22 ? r.note.slice(0, 22) + '…' : r.note) : '+ Qeyd')),
+        try { await mut(sb.from('registrations').update({ note: v, updated_at: nowIso() }).eq('id', r.id)); r.note = v; renderRegs(); toast('Qeyd saxlanıldı.'); } catch (x) { toast('Saxlanılmadı.'); } } }, r.note ? '✎ ' + (r.note.length > 22 ? r.note.slice(0, 22) + '…' : r.note) : '+ Qeyd')),
       h('td', {}, h('button', { class: 'btn red sm', type: 'button', onclick: async () => {
         if (!confirm(`“${r.fullName}” müraciəti silinsin?`)) return;
-        try { await F.deleteDoc(F.doc(db, 'registrations', r.id)); S.regs = S.regs.filter(x => x !== r); S.counts.regs--; renderAll(); toast('Silindi.'); } catch (x) { toast('Silinmədi.'); } } }, 'Sil'))));
+        try { await mut(sb.from('registrations').delete().eq('id', r.id)); S.regs = S.regs.filter(x => x !== r); S.counts.regs--; renderAll(); toast('Silindi.'); } catch (x) { toast('Silinmədi.'); } } }, 'Sil'))));
     $('#regsT').replaceChildren(table(['Tarix', 'Ad soyad', 'Gmail', 'İstiqamət', 'Status', 'Qeyd', ''], trs, 'Müraciət tapılmadı.'));
   }
   $('#rS').replaceChildren(h('option', { value: '' }, 'Bütün statuslar'), ...Object.entries(STATUS).map(([k, l]) => h('option', { value: k }, l)));
@@ -165,8 +199,8 @@ else {
         h('td', {}, h('span', { class: 'st ' + r }, r === 'ceo' ? 'CEO' : r === 'admin' ? 'Admin' : 'Tələbə')), h('td', { class: 'mut' }, fmtDT(u._t)),
         h('td', {}, isCeo() && r !== 'ceo' ? h('button', { class: r === 'admin' ? 'btn red sm' : 'btn ghost sm', type: 'button', onclick: async () => {
           try {
-            if (r === 'admin') { await F.deleteDoc(F.doc(db, 'admins', u.id)); S.admins.delete(u.id); }
-            else { const d = { email: u.email, name: u.fullName || null, addedBy: me.email, createdAt: F.serverTimestamp() }; await F.setDoc(F.doc(db, 'admins', u.id), d); S.admins.set(u.id, d); }
+            if (r === 'admin') { await mut(sb.from('admins').delete().eq('user_id', u.id)); S.admins.delete(u.id); }
+            else { const d = { user_id: u.id, email: u.email, name: u.fullName || null, added_by: me.email }; await mut(sb.from('admins').insert(d)); S.admins.set(u.id, d); }
             renderUsers(); renderDash(); toast('Rol yeniləndi.');
           } catch (x) { toast('Dəyişmək alınmadı.'); } } }, r === 'admin' ? 'Adminlikdən çıxar' : 'Admin et') : ''));
     });
@@ -182,7 +216,7 @@ else {
     $('#subsT').replaceChildren(table(['E-poçt', 'Tarix', ''], list.map(s => h('tr', {}, h('td', {}, s.email), h('td', { class: 'mut' }, fmtDT(s._t)),
       h('td', {}, h('button', { class: 'btn red sm', type: 'button', onclick: async () => {
         if (!confirm(s.email + ' abunəliyi silinsin?')) return;
-        try { await F.deleteDoc(F.doc(db, 'newsletter', s.id)); S.subs = S.subs.filter(x => x !== s); S.counts.subs--; renderAll(); toast('Silindi.'); } catch (x) { toast('Silinmədi.'); } } }, 'Sil')))), 'Abunəçi yoxdur.'));
+        try { await mut(sb.from('newsletter').delete().eq('email', s.id)); S.subs = S.subs.filter(x => x !== s); S.counts.subs--; renderAll(); toast('Silindi.'); } catch (x) { toast('Silinmədi.'); } } }, 'Sil')))), 'Abunəçi yoxdur.'));
   }
   $('#sQ').addEventListener('input', renderSubs);
   $('#sCsv').onclick = () => csv('abuneler.csv', ['E-poçt', 'Tarix'], (S.subsView || S.subs).map(s => [s.email, fmtDT(s._t)]));
@@ -201,7 +235,7 @@ else {
     [0, 1, 2].forEach(i => { const x = (s.slides || [])[i] || {}; $('#s_t' + i).value = x.t || ''; $('#s_s' + i).value = x.s || ''; });
   }
   async function saveSettings(obj, ok) {
-    try { await F.setDoc(F.doc(db, 'site', 'settings'), obj, { merge: true }); Object.assign(S.settings, obj); toast(ok); }
+    try { const merged = { ...S.settings, ...obj }; chk(await sb.from('site').upsert({ doc: 'settings', data: merged, updated_at: nowIso() }, { onConflict: 'doc' })); S.settings = merged; toast(ok); }
     catch (e) { toast('Saxlamaq alınmadı: ' + (e.code || '')); }
   }
   async function loadTexts() {
@@ -238,7 +272,7 @@ else {
     } else if (k === 'texts') {
       const all = {}; const cur = {}; $$('textarea[data-key]', $('#textsF')).forEach(t => { cur[t.dataset.key] = t.value.trim(); });
       S.texts.forEach(t => { const v = t.key in cur ? cur[t.key] : (S.content[t.key] || ''); if (v && v !== t.def) all[t.key] = v; });
-      try { await F.setDoc(F.doc(db, 'site', 'content'), all); S.content = all; toast('Mətnlər saxlanıldı.'); } catch (e) { toast('Saxlamaq alınmadı: ' + (e.code || '')); }
+      try { chk(await sb.from('site').upsert({ doc: 'content', data: all, updated_at: nowIso() }, { onConflict: 'doc' })); S.content = all; toast('Mətnlər saxlanıldı.'); } catch (e) { toast('Saxlamaq alınmadı: ' + (e.code || '')); }
     }
   });
 

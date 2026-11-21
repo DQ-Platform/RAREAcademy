@@ -1,20 +1,15 @@
 # RARE Academy
 
-Statik sayt (HTML + CSS + JS), build tələb olunmur.
-
-**Render:** New > Static Site, Publish directory: `.`
+Statik sayt (HTML + CSS + JS), build tələb olunmur. **Render:** New > Static Site, Publish directory: `.`
 
 ## Quruluş
-- `index.html` – səhifə
-- `style.css`, `script.js`
-- `auth.js` – Firebase (Firestore) mərkəzi baza + Google ilə giriş
-- `firestore.rules` – verilənlər bazasının təhlükəsizlik qaydaları
-- `SETUP.md` – quraşdırma təlimatı
-- `assets/` – şəkillər (hero.jpg, p1–p9.jpg, rare-symbol.png, favicon.png)
-
-## Tənzimləmə
-`script.js`-in əvvəlindəki `CONFIG` obyektində sınaq platforması, şəxsi kabinet, sosial şəbəkə, video linkləri və form endpoint-i yazılır. Boş qalan link kliklənəndə “tezliklə” bildirişi göstərilir.
-
+- `index.html`, `style.css`, `script.js` – səhifə
+- `auth.js` – Supabase: e-poçt kodu ilə təsdiq, (istəyə bağlı) Google girişi, qeydiyyat müraciətləri
+- `supabase-config.js` – Supabase URL və ictimai (anon) açar
+- `supabase/schema.sql` – cədvəllər və təhlükəsizlik qaydaları (SQL Editor-də bir dəfə işə salınır)
+- `supabase/email-template.html` – kod məktubunun şablonu
+- `admin.html`, `admin.js` – Admin/CEO paneli; `cms.js` – panel ayarlarını sayta tətbiq edir
 - `consent.js` – kuki icazəsi paneli
-- `functions/` – e-poçt kodu (Cloud Functions), `firebase.json`
-- `admin.html`, `admin.js` – Admin/CEO paneli; `cms.js` – panel ayarlarını sayta tətbiq edir; `firebase-config.js` – Firebase konfiqurasiyası
+- `SUPABASE-SETUP.md` – quraşdırma təlimatı
+
+`script.js`-in əvvəlindəki `CONFIG` obyektində sınaq platforması, sosial şəbəkə, video linkləri və form endpoint-i yazılır.

@@ -1,32 +1,51 @@
 /* =====================================================================
-   RARE Academy – Firebase: Google ilə giriş, e-poçt kodu ilə təsdiq,
-   qeydiyyat müraciətləri, "90 gün xatırla". Quraşdırma: SETUP.md
-   Konfiqurasiya dəyərləri ictimaidir (təhlükəsizliyi firestore.rules təmin edir).
+   RARE Academy – Supabase: e-poçt kodu ilə təsdiq, Google ilə giriş (istəyə bağlı),
+   qeydiyyat müraciətləri, "90 gün xatırla". Quraşdırma: SUPABASE-SETUP.md
+   Konfiqurasiya dəyərləri ictimaidir (təhlükəsizliyi supabase/schema.sql-dəki RLS qaydaları təmin edir).
    ===================================================================== */
-import { FIREBASE_CONFIG, FUNCTIONS_REGION, CEO_EMAIL } from './firebase-config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, GOOGLE_ENABLED, CEO_EMAIL } from './supabase-config.js';
 import { applySite } from './cms.js';
-const FB = 'https://www.gstatic.com/firebasejs/10.14.1/';
+const SB_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 
-const ready = !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId && FIREBASE_CONFIG.appId);
+let ready = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 const $id = id => document.getElementById(id);
 const NO_REG = 'Sizin aktiv qeydiyyatınız yoxdur. Əvvəlcə qeydiyyatdan keçin.';
+const NO_ACTIVE = 'Sizin aktiv qeydiyyatınız yoxdur. Ad, soyad və Gmail qeydiyyatdakı kimi yazılmalıdır, ya da əvvəlcə qeydiyyatdan keçin.';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const phoneOk = v => String(v).replace(/\D/g, '').length >= 9;
-let user = null, profile = null, A = null, F = null, auth = null, db = null, sendCode = null, verifyCode = null;
+let user = null, profile = null, sb = null;
 let isAdmin = false;
 let mode = 'register', emailCtx = null, resendT = null;
 
-if (!ready) console.info('[RARE] Mərkəzi baza qoşulmayıb (firebase-config.js → FIREBASE_CONFIG). Köhnə rejim işləyir.');
+/* Sessiya yaddaşı: "90 gün xatırla" seçilibsə localStorage, əks halda sessionStorage (brauzer bağlananda çıxış) */
+let useLocal = false;
+try {
+  useLocal = Object.keys(localStorage).some(k => k.startsWith('sb-'));
+  const f = JSON.parse(sessionStorage.getItem('rare_flow')); if (f && f.remember) useLocal = true;
+} catch (e) {}
+const storage = {
+  getItem: k => { try { const v = sessionStorage.getItem(k); return v !== null ? v : localStorage.getItem(k); } catch (e) { return null; } },
+  setItem: (k, v) => { try { const a = useLocal ? localStorage : sessionStorage, b = useLocal ? sessionStorage : localStorage; a.setItem(k, v); b.removeItem(k); } catch (e) {} },
+  removeItem: k => { try { sessionStorage.removeItem(k); localStorage.removeItem(k); } catch (e) {} }
+};
+const setPersist = on => { useLocal = !!on; };
+
+if (!ready) console.info('[RARE] Mərkəzi baza qoşulmayıb (supabase-config.js). Köhnə rejim işləyir.');
 else {
-  const [app, au, fs, fn] = await Promise.all(['app', 'auth', 'firestore', 'functions'].map(n => import(FB + 'firebase-' + n + '.js')));
-  A = au; F = fs;
-  const fbApp = app.initializeApp(FIREBASE_CONFIG);
-  auth = A.getAuth(fbApp); auth.languageCode = 'az'; db = F.getFirestore(fbApp);
-  const fns = fn.getFunctions(fbApp, FUNCTIONS_REGION);
-  sendCode = fn.httpsCallable(fns, 'sendEmailCode'); verifyCode = fn.httpsCallable(fns, 'verifyEmailCode');
-  A.getRedirectResult(auth).catch(() => {});
-  applySite(db, F);                                   // admin paneldəki sayt ayarlarını tətbiq edir
+  try {
+    const { createClient } = await import(SB_CDN);
+    sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' } });
+    applySite(sb);                                    // admin paneldəki sayt ayarlarını tətbiq edir
+  } catch (e) { ready = false; console.error('[RARE] Supabase yüklənmədi', e); }
 }
+if (!GOOGLE_ENABLED || !ready) {                      // Google qoşulmayıbsa düymə və "və ya" gizlədilir
+  const g = $id('googleBtn'); if (g) g.style.display = 'none';
+  const o = document.querySelector('#register .or'); if (o) o.style.display = 'none';
+}
+const norm = u => u ? { uid: u.id, email: u.email || '', emailVerified: !!u.email_confirmed_at,
+  displayName: (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '',
+  photoURL: (u.user_metadata && (u.user_metadata.avatar_url || u.user_metadata.picture)) || '' } : null;
+const userErr = t => { const e = new Error(t); e.user = true; return e; };
 
 /* ---- Yaddaş: axın (sessionStorage) və "90 gün xatırla" (localStorage) ---- */
 const FLOW = 'rare_flow', REM = 'rare_remember';
@@ -47,7 +66,8 @@ window.addEventListener('rare:consent', e => {            // "Rədd et" → saxl
 const fullName = () => (profile && profile.fullName) || (user && (user.displayName || user.email)) || '';
 const firstName = () => fullName().split(/\s+/)[0] || '';
 const msg = (e, d = 'Xəta baş verdi. Bir az sonra yenidən cəhd edin.') =>
-  e && String(e.code).startsWith('functions/') && e.message && !/^[A-Z_ ]+$/.test(e.message) ? e.message : d;
+  e && e.user ? e.message
+  : e && (e.status === 429 || /rate limit|only request this after/i.test(e.message || '')) ? 'Çox tez-tez cəhd edildi. Bir az gözləyib yenidən cəhd edin.' : d;
 const fail = (el, text, input) => { el.textContent = text; if (input) input.focus(); };
 
 /* ---- Menyu ---- */
@@ -67,17 +87,17 @@ function renderAuth() {
 async function checkAdmin() {
   isAdmin = false; if (!user) return;
   if ((user.email || '').toLowerCase() === CEO_EMAIL && user.emailVerified) { isAdmin = true; return; }
-  try { isAdmin = (await F.getDoc(F.doc(db, 'admins', user.uid))).exists(); } catch (_) {}
+  try { const r = await sb.from('admins').select('user_id').eq('user_id', user.uid).maybeSingle(); isAdmin = !!r.data; } catch (_) {}
 }
 async function loadProfile() {
-  const ref = F.doc(db, 'users', user.uid);
-  let snap = await F.getDoc(ref);
-  if (!snap.exists()) {
-    await F.setDoc(ref, { email: user.email || '', fullName: user.displayName || null, phone: null, photoURL: user.photoURL || null,
-      role: 'student', createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() });
-    snap = await F.getDoc(ref);
+  let r = await sb.from('profiles').select('*').eq('id', user.uid).maybeSingle();
+  if (r.error) throw r.error;
+  if (!r.data) {                                       // adətən qeydiyyatda trigger yaradır; yoxdursa özümüz yazırıq
+    const ins = await sb.from('profiles').insert({ id: user.uid, email: user.email, full_name: user.displayName || null, photo_url: user.photoURL || null });
+    if (ins.error && ins.error.code !== '23505') throw ins.error;
+    r = await sb.from('profiles').select('*').eq('id', user.uid).maybeSingle();
   }
-  profile = snap.data();
+  profile = r.data ? { fullName: r.data.full_name, phone: r.data.phone, role: r.data.role } : null;
 }
 
 /* ---- Dialoq: addımlar ---- */
@@ -91,7 +111,7 @@ function setMode(m) {
   mode = m;
   dlg().classList.toggle('login', m === 'login'); dlg().classList.toggle('legacy', !ready);
   $id('regTitle').textContent = m === 'login' ? 'Daxil ol' : 'Qeydiyyat';
-  $id('regLead').textContent = m === 'login' ? 'Qeydiyyatdan keçdiyiniz ad və Gmail ünvanını yazın – təsdiq kodu göndərəcəyik. Və ya Google ilə daxil olun.'
+  $id('regLead').textContent = m === 'login' ? 'Qeydiyyatdan keçdiyiniz ad və Gmail ünvanını yazın – təsdiq kodu göndərəcəyik.' + (GOOGLE_ENABLED ? ' Və ya Google ilə daxil olun.' : '')
     : ready ? 'Məlumatlarınızı yazın və e-poçtunuzu təsdiqləyin – komandamız tezliklə sizinlə əlaqə saxlayacaq.'
             : 'Məlumatlarınızı yazın, komandamız tezliklə sizinlə əlaqə saxlayacaq.';
   $id('sendLabel').textContent = ready ? 'Kod göndər' : 'Göndər';
@@ -134,6 +154,15 @@ function startResend() {
 }
 
 /* ---- 1) E-poçt kodu ilə ---- */
+async function sendCode({ email, mode, name }) {
+  if (mode === 'login') {
+    const r = await sb.rpc('has_active_registration', { p_email: email, p_name: name });
+    if (r.error) throw userErr('Yoxlama alınmadı. Bir az sonra yenidən cəhd edin.');
+    if (!r.data) throw userErr(NO_ACTIVE);
+  }
+  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, data: { full_name: name } } });
+  if (error) { if (error.status === 429) throw error; throw userErr('E-poçt göndərilmədi. Bir az sonra yenidən cəhd edin.'); }
+}
 $id('emailForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target, err = $id('regErr'), btn = $id('sendBtn'); err.textContent = '';
@@ -166,11 +195,12 @@ $id('codeForm').addEventListener('submit', async e => {
   if (!/^\d{6}$/.test(code)) return fail(err, '6 rəqəmli kodu daxil edin.', f.code);
   btn.disabled = true;
   try {
-    const { data } = await verifyCode({ email: emailCtx.email, code, name: emailCtx.name });
-    await A.setPersistence(auth, emailCtx.remember ? A.browserLocalPersistence : A.browserSessionPersistence);
+    setPersist(emailCtx.remember);
     setFlow({ mode: emailCtx.mode, via: 'email', name: emailCtx.name, program: emailCtx.program, remember: emailCtx.remember });
-    await A.signInWithCustomToken(auth, data.token);        // davamı onAuthStateChanged → handleFlow
-  } catch (x) { clearFlow(); err.textContent = msg(x, 'Təsdiq alınmadı. Yenidən cəhd edin.'); f.code.select(); }
+    const { data, error } = await sb.auth.verifyOtp({ email: emailCtx.email, token: code, type: 'email' });
+    if (error || !data || !data.user) throw error || new Error('verify');
+    if (user && user.uid === data.user.id) await handleFlow();   // eyni hesab: hadisə təkrar işə düşməyə bilər
+  } catch (x) { clearFlow(); err.textContent = msg(x, 'Kod səhvdir və ya vaxtı bitib. Yenidən yoxlayın və ya yeni kod istəyin.'); f.code.select(); }
   btn.disabled = false;
 });
 $id('resendBtn').addEventListener('click', async () => {
@@ -185,20 +215,16 @@ $id('googleBtn').addEventListener('click', async () => {
   if (!ready) return;
   const err = $id('regErr'), btn = $id('googleBtn'); err.textContent = ''; btn.disabled = true;
   const remember = $id('remember').checked && consentOk();
-  const provider = new A.GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' });
   try {
-    await A.setPersistence(auth, remember ? A.browserLocalPersistence : A.browserSessionPersistence);
+    setPersist(remember);
     setFlow({ mode, via: 'google', program: $id('program').value, name: $id('emailForm').name.value.trim(), remember });
-    await A.signInWithPopup(auth, provider);
+    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } } });
+    if (error) throw error;
+    return;                                                // brauzer Google səhifəsinə yönləndirilir
   } catch (x) {
-    if (x.code === 'auth/popup-blocked' || x.code === 'auth/operation-not-supported-in-this-environment') {
-      try { return await A.signInWithRedirect(auth, provider); } catch (_) {}
-    }
     clearFlow();
-    if (!['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(x.code))
-      err.textContent = x.code === 'auth/unauthorized-domain' ? 'Bu domen Firebase-də icazəli deyil (Authorized domains).'
-        : x.code === 'auth/account-exists-with-different-credential' ? 'Bu e-poçt başqa üsulla qeydiyyatdan keçib – e-poçt kodu ilə daxil olun.'
-        : 'Google ilə giriş alınmadı. Bir az sonra yenidən cəhd edin.';
+    err.textContent = /not enabled|Unsupported provider/i.test(x.message || '') ? 'Google girişi hələ aktiv deyil. E-poçt kodu ilə davam edin.' : 'Google ilə giriş alınmadı. Bir az sonra yenidən cəhd edin.';
+    console.error('[RARE] Google giriş xətası', x);
   }
   btn.disabled = false;
 });
@@ -215,10 +241,10 @@ $id('confirmForm').addEventListener('submit', async e => {          // Google-da
 
 /* ---- Qeydiyyatın yazılması ---- */
 async function saveRegistration(name, program) {
-  await F.addDoc(F.collection(db, 'registrations'), { fullName: name, email: user.email, program, source: 'website',
-    status: 'new', userId: user.uid, createdAt: F.serverTimestamp() });
+  const ins = await sb.from('registrations').insert({ full_name: name, email: user.email.toLowerCase(), program, user_id: user.uid });
+  if (ins.error) throw ins.error;
   if (name !== (profile && profile.fullName)) {
-    try { await F.updateDoc(F.doc(db, 'users', user.uid), { fullName: name, updatedAt: F.serverTimestamp() }); await loadProfile(); } catch (_) {}
+    try { await sb.from('profiles').update({ full_name: name, updated_at: new Date().toISOString() }).eq('id', user.uid); await loadProfile(); } catch (_) {}
   }
   renderAuth();
   showDone(`Təşəkkür edirik, ${name.split(/\s+/)[0]}! E-poçt ünvanınız təsdiqləndi, komandamız tezliklə sizinlə əlaqə saxlayacaq.`);
@@ -229,9 +255,10 @@ async function handleFlow() {
     if (fl.mode === 'login') {
       clearFlow();
       if (fl.via === 'google') {                           // Google ilə girişdə qeydiyyat yoxlanılır
-        const q = await F.getDocs(F.query(F.collection(db, 'registrations'), F.where('userId', '==', user.uid)));
-        if (!q.docs.some(d => d.data().status !== 'rejected')) {
-          await A.signOut(auth); setMode('login'); showStep(1); $id('regErr').textContent = NO_REG;
+        const q = await sb.from('registrations').select('status').eq('user_id', user.uid);
+        if (q.error) throw q.error;
+        if (!(q.data || []).some(d => d.status !== 'rejected')) {
+          await sb.auth.signOut(); setMode('login'); showStep(1); $id('regErr').textContent = NO_REG;
           if (!dlg().open) openDialog(dlg()); return;
         }
       }
@@ -267,7 +294,8 @@ $id('profileForm').addEventListener('submit', async e => {
   if (phone && !phoneOk(phone)) return fail(err, 'Düzgün mobil nömrə daxil edin.', f.phone);
   const btn = f.querySelector('button[type=submit]'); btn.disabled = true;
   try {
-    await F.updateDoc(F.doc(db, 'users', user.uid), { fullName: name, phone: phone || null, updatedAt: F.serverTimestamp() });
+    const up = await sb.from('profiles').update({ full_name: name, phone: phone || null, updated_at: new Date().toISOString() }).eq('id', user.uid);
+    if (up.error) throw up.error;
     await loadProfile(); renderAuth(); closeDialog($id('profile')); toast('Profil yeniləndi.');
   } catch (_) { err.textContent = 'Yadda saxlamaq alınmadı. Yenidən cəhd edin.'; }
   btn.disabled = false;
@@ -280,21 +308,26 @@ document.addEventListener('click', e => {
   const a = b.dataset.auth;
   if (a === 'login') openFlow('login');
   else if (a === 'profile') openProfile();
-  else if (a === 'logout' && ready) A.signOut(auth).then(() => toast('Hesabdan çıxdınız.'));
+  else if (a === 'logout' && ready) sb.auth.signOut().then(() => toast('Hesabdan çıxdınız.'));
   else if (a === 'cabinet') user ? openProfile() : openFlow('login');
 });
 document.querySelectorAll('[data-open="register"]').forEach(b => b.addEventListener('click', () => openFlow('register')));
 
 /* ---- Sessiya ---- */
+async function onSession(u) {
+  const same = !!(u && user && u.uid === user.uid);
+  user = u;
+  const r = rawRem();
+  if (u && r && r.until <= Date.now()) { clearRem(); await sb.auth.signOut(); return; }   // 90 gün bitdi
+  if (!u) { profile = null; isAdmin = false; renderAuth(); return; }
+  if (!same) { try { await loadProfile(); } catch (_) {} await checkAdmin(); }
+  renderAuth(); await handleFlow();
+}
 if (ready) {
-  A.onAuthStateChanged(auth, async u => {
-    user = u;
-    const r = rawRem();
-    if (u && r && r.until <= Date.now()) { clearRem(); await A.signOut(auth); return; }   // 90 gün bitdi
-    renderAuth();
-    if (!u) { profile = null; isAdmin = false; renderAuth(); return; }
-    try { await loadProfile(); } catch (_) {}
-    await checkAdmin(); renderAuth(); await handleFlow();
+  let chain = Promise.resolve();
+  sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === 'TOKEN_REFRESHED' || ev === 'USER_UPDATED' || ev === 'PASSWORD_RECOVERY') return;
+    setTimeout(() => { chain = chain.then(() => onSession(norm(session && session.user))).catch(e => console.error(e)); }, 0);
   });
 }
 
@@ -303,7 +336,7 @@ const legacySubmit = window.submitData;
 window.submitData = async function (subject, fields) {
   if (!ready || !fields.Email) return legacySubmit(subject, fields);
   const email = fields.Email.trim().toLowerCase();
-  try { await F.setDoc(F.doc(db, 'newsletter', email), { email, createdAt: F.serverTimestamp() }); }
-  catch (e) { if (e.code !== 'permission-denied') throw e; }     // artıq abunə olan e-poçt təkrar yazıla bilmir
+  const r = await sb.from('newsletter').insert({ email });
+  if (r.error && r.error.code !== '23505') throw r.error;          // 23505 = artıq abunə olan e-poçt
   return 'sent';
 };
