@@ -368,3 +368,38 @@ footer{padding-top:64px}
 .dlg .fine{font-size:12.5px;color:#6a7aa0;line-height:1.45}
 .dlg .mail{font-size:14px;color:#4a5d86;word-break:break-all}
 @media(max-width:1180px){.menu .acct-in{margin:10px 0 4px}.menu .acct-in .btn{width:100%}.menu .acct .sub{right:auto}}
+
+/* ===== Qeydiyyat axını + kuki paneli ===== */
+.dlg section{display:grid;gap:14px}.dlg section[hidden]{display:none}
+.dlg form{display:grid;gap:14px}.dlg section>p{color:#4a5d86;font-size:15px}
+#register.login [data-reg]{display:none}
+#register.legacy .gbtn,#register.legacy .or,#register.legacy .chk{display:none}
+.or{display:flex;align-items:center;gap:12px;color:#6a7aa0;font-size:13px}.or:before,.or:after{content:"";flex:1;height:1px;background:#d6e0f5}
+.dlg label.chk{display:flex;align-items:flex-start;gap:10px;font-weight:500;font-size:14px;color:#33466e;cursor:pointer;line-height:1.4}
+.dlg label.chk[hidden]{display:none}
+.dlg label.chk input{width:18px;height:18px;min-width:18px;padding:0;margin:1px 0 0;accent-color:var(--blue)}
+.dlg label.chk input:disabled+span{opacity:.6}.chk-hint{font-size:12.5px;color:#8a6d00}
+.dlg input.otp{text-align:center;font-size:28px;letter-spacing:.5em;font-weight:700;padding-left:calc(14px + .5em)}
+.dlg .link{background:none;border:0;padding:6px;color:var(--blue);font:inherit;font-weight:600;font-size:14px;cursor:pointer;justify-self:center}.dlg .link:disabled{color:#8a97b5;cursor:default}
+.dlg section.done{text-align:center;justify-items:center}
+.done-ic{width:64px;height:64px;border-radius:50%;background:var(--green);display:grid;place-items:center}
+.done-ic svg{width:32px;height:32px;color:var(--navy);stroke-width:3}
+.ckbar{position:fixed;left:16px;right:16px;bottom:16px;z-index:120;max-width:640px;margin-inline:auto;background:#F1EBE4;color:#2b2724;border-radius:24px;padding:22px 24px 18px;box-shadow:0 12px 40px #0004;display:grid;grid-template-columns:auto 1fr;gap:14px 18px;align-items:center;transform:translateY(calc(100% + 32px));visibility:hidden;transition:transform .5s cubic-bezier(.2,.8,.2,1),visibility 0s .5s}
+.ckbar.show{transform:none;visibility:visible;transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+.ckbar p{margin:0;font-size:16px;line-height:1.5;font-weight:500}
+.ck-ic svg{width:44px;height:44px;stroke:none;display:block}
+.ck-btns{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.ck-btns button{font:inherit;font-weight:600;font-size:15px;padding:12px 18px;border-radius:12px;border:0;cursor:pointer;transition:.2s}
+.ck-ghost{background:transparent;color:#6b645d}.ck-ghost:hover{background:#00000012}
+.ck-out{background:transparent;color:#333;box-shadow:inset 0 0 0 1.5px #3333336b}.ck-out:hover{background:#00000012}
+.ck-main{background:#333;color:#fff}.ck-main:hover{background:#000}
+.ckbar button:focus-visible{outline:3px solid #0042AC;outline-offset:2px}
+@media(max-width:520px){.ckbar{left:10px;right:10px;bottom:10px;padding:18px 16px 14px}.ck-btns button{flex:1 1 auto;padding:12px 10px}}
+@media(prefers-reduced-motion:reduce){.ckbar,.ckbar.show{transition:none}}
+
+.have{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid #d6e0f5;font-weight:600;font-size:14px;color:#33466e}
+.have .btn{padding:10px 18px;font-size:14px}
+#register.legacy .have{display:none}
+
+.annc{position:relative;background:var(--blue);color:#fff;text-align:center;padding:10px 44px 10px 16px;font-size:14px;font-weight:600}
+.annc button{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:0;color:#fff;font-size:24px;line-height:1;cursor:pointer}

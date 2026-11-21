@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>RARE Academy – Admin panel</title>
+<link rel="icon" href="favicon.png">
+<style>
+:root{--navy:#0A1A3A;--blue:#0042AC;--sea:#00D3FB;--green:#83FD80;--mist:#F4F7FC;--ink:#0A1A3A;--mut:#5d6f93;--line:#e0e8f6;--red:#c62828}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;font:15px/1.5 system-ui,"Segoe UI",Roboto,Arial,sans-serif;background:var(--mist);color:var(--ink)}
+button,input,select,textarea{font:inherit;color:inherit}
+.gate{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(160deg,var(--navy),#003184)}
+.gcard{background:#fff;border-radius:20px;padding:34px 28px;width:min(420px,100%);text-align:center;display:grid;gap:14px}
+.gcard img{width:64px;margin:0 auto}.gcard h1{margin:0;font-size:24px}.gcard p{margin:0;color:var(--mut)}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:13px;border:1.5px solid #c9d8f3;border-radius:10px;background:#fff;font-weight:600;cursor:pointer}
+.gbtn:hover{background:var(--mist)}.gbtn svg{width:20px;height:20px}
+.gmsg{color:var(--red);font-size:14px;min-height:1.2em}
+#app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+.side{background:var(--navy);color:#fff;padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 16px;font-weight:700;font-size:17px}.brand small{display:block;font-weight:500;opacity:.7;font-size:12px}
+.brand img{width:34px}
+.nv{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;color:#cfd9f2;padding:11px 12px;border-radius:10px;cursor:pointer}
+.nv:hover{background:#ffffff14}.nv.on{background:var(--blue);color:#fff;font-weight:600}
+.sp{flex:1}.me{padding:12px;border-top:1px solid #ffffff22;font-size:13px;display:grid;gap:8px}
+.me b{display:block;word-break:break-all}.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;background:var(--green);color:var(--navy)}
+.side a,.lnk{color:#cfd9f2;text-decoration:none;padding:8px 12px;border-radius:10px;display:block}.side a:hover{background:#ffffff14}
+main{padding:22px;min-width:0}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}.top h1{margin:0;font-size:24px;flex:1}
+#menuBtn{display:none}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:600;cursor:pointer;background:var(--blue);color:#fff}
+.btn:hover{filter:brightness(1.1)}.btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.sm{padding:6px 12px;font-size:13px}.btn.red{background:#fff;color:var(--red);box-shadow:inset 0 0 0 1.5px #f0c4c4}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:16px}
+.kpi,.card{background:#fff;border-radius:16px;padding:16px 18px;box-shadow:0 1px 3px #0a1a3a14}
+.kpi span{color:var(--mut);font-size:13px}.kpi b{display:block;font-size:30px;line-height:1.2}.kpi small{color:var(--mut)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:17px}.card h3{margin:16px 0 8px;font-size:15px}.hint{color:var(--mut);font-size:13px;margin:0 0 10px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:150px;border-bottom:1px solid var(--line)}
+.bars i{flex:1;background:linear-gradient(var(--sea),var(--blue));border-radius:4px 4px 0 0;min-height:2px}
+.axis{display:flex;justify-content:space-between;color:var(--mut);font-size:12px;margin-top:4px}
+.hbar{display:grid;grid-template-columns:minmax(90px,150px) 1fr 34px;gap:10px;align-items:center;font-size:14px;margin:7px 0}
+.hbar .t{background:#e8eefb;border-radius:6px;height:10px;overflow:hidden}.hbar .t i{display:block;height:100%;background:var(--blue)}.hbar em{font-style:normal;text-align:right;font-weight:600}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.bar input,.bar select{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff}.bar input{flex:1;min-width:180px}
+.tw{overflow:auto;background:#fff;border-radius:16px;box-shadow:0 1px 3px #0a1a3a14}
+table{border-collapse:collapse;width:100%;min-width:720px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+th{background:#f7f9fe;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td select{padding:6px 8px;border:1.5px solid var(--line);border-radius:8px;background:#fff}
+.mut{color:var(--mut)}.empty{padding:26px;text-align:center;color:var(--mut)}
+.st{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;background:#e8eefb;color:var(--blue)}
+.st.ceo{background:var(--green);color:var(--navy)}.st.admin{background:#d9f5ff;color:#006a85}
+.form{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.f{display:grid;gap:5px;font-weight:600;font-size:13px}.f input,.f textarea,.f select{padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:400;width:100%}
+.f.wide{grid-column:1/-1}.chk{display:flex;gap:10px;align-items:center;font-weight:600}.chk input{width:18px;height:18px}
+.txt{display:grid;gap:4px;padding:12px 0;border-bottom:1px solid var(--line)}.txt label{font-size:12px;color:var(--mut);font-weight:600}
+.txt textarea{padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;width:100%;min-height:44px;resize:vertical}
+dialog{border:0;border-radius:16px;padding:22px;width:min(460px,92vw)}dialog::backdrop{background:#02102bcc}dialog textarea{width:100%;min-height:120px;padding:10px;border:1.5px solid var(--line);border-radius:10px}
+.row{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 20px;border-radius:30px;opacity:0;pointer-events:none;transition:.3s;z-index:99}#toast.show{opacity:1}
+@media(max-width:900px){#app{grid-template-columns:1fr}.side{position:fixed;inset:0 auto 0 0;width:260px;height:100%;transform:translateX(-100%);transition:.25s;z-index:60}.side.open{transform:none}#menuBtn{display:inline-block}main{padding:14px}}
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <div class="gcard">
+    <img src="rare-symbol.png" alt="">
+    <h1>Admin panel</h1><p>RARE Academy idarəetmə sistemi. Yalnız səlahiyyətli hesablar üçün.</p>
+    <button class="gbtn" id="gLogin" type="button"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google ilə daxil ol</button>
+    <p class="gmsg" id="gMsg" role="alert"></p>
+    <button class="btn ghost" id="gOut" type="button" hidden>Başqa hesabla daxil ol</button>
+    <a class="lnk" href="index.html" style="color:var(--blue)">← Sayta qayıt</a>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <aside class="side" id="side">
+    <div class="brand"><img src="rare-symbol.png" alt=""><span>RARE Academy<small>Admin panel</small></span></div>
+    <button class="nv on" data-tab="dash">📊 İdarə paneli</button>
+    <button class="nv" data-tab="regs">📝 Müraciətlər</button>
+    <button class="nv" data-tab="users">👥 İstifadəçilər</button>
+    <button class="nv" data-tab="subs">✉️ Abunəçilər</button>
+    <button class="nv" data-tab="site">⚙️ Sayt idarəsi</button>
+    <div class="sp"></div>
+    <a href="index.html">← Sayta qayıt</a>
+    <div class="me"><div><span class="badge" id="roleBadge"></span><b id="meMail"></b></div><button class="btn ghost sm" id="logout" type="button">Çıxış</button></div>
+  </aside>
+  <main>
+    <div class="top"><button class="btn ghost" id="menuBtn" type="button" aria-label="Menyu">☰</button><h1 id="pageTitle">İdarə paneli</h1><button class="btn ghost" id="refresh" type="button">↻ Yenilə</button></div>
+
+    <section id="tab-dash">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2">
+        <div class="card"><h2>Son 30 gündə müraciətlər</h2><div class="bars" id="chart30"></div><div class="axis" id="axis30"></div></div>
+        <div class="card"><h2>İstiqamətlər üzrə müraciətlər</h2><div id="byProg"></div></div>
+        <div class="card"><h2>Statuslar</h2><div id="byStatus"></div></div>
+        <div class="card"><h2>Son müraciətlər</h2><div id="recent"></div></div>
+      </div>
+      <p class="hint" id="limitNote"></p>
+    </section>
+
+    <section id="tab-regs" hidden>
+      <div class="bar"><input id="rQ" type="search" placeholder="Ad, e-poçt, istiqamət, qeyd üzrə axtar…"><select id="rS"></select><select id="rP"></select><button class="btn ghost" id="rCsv" type="button">CSV yüklə</button></div>
+      <div id="regsT"></div>
+    </section>
+
+    <section id="tab-users" hidden>
+      <div class="bar"><input id="uQ" type="search" placeholder="Ad və ya e-poçt üzrə axtar…"><select id="uR"><option value="">Bütün rollar</option><option value="admin">Yalnız adminlər</option></select><button class="btn ghost" id="uCsv" type="button">CSV yüklə</button></div>
+      <p class="hint" id="uNote"></p><div id="usersT"></div>
+    </section>
+
+    <section id="tab-subs" hidden>
+      <div class="bar"><input id="sQ" type="search" placeholder="E-poçt üzrə axtar…"><button class="btn ghost" id="sCopy" type="button">E-poçtları kopyala</button><button class="btn ghost" id="sCsv" type="button">CSV yüklə</button></div>
+      <div id="subsT"></div>
+    </section>
+
+    <section id="tab-site" hidden>
+      <div class="card" style="margin-bottom:14px"><h2>Əlaqə və linklər</h2><div class="form">
+        <label class="f">Telefon (saytda göstərilən)<input id="s_phone" placeholder="050 430 51 62"></label>
+        <label class="f">WhatsApp nömrəsi<input id="s_whatsapp" placeholder="994504305162"></label>
+        <label class="f">Əlaqə e-poçtu<input id="s_email" type="email" placeholder="info@rareacademy.az"></label>
+        <label class="f">Telegram linki<input id="s_telegramUrl" placeholder="https://t.me/..."></label>
+        <label class="f">YouTube linki<input id="s_youtubeUrl" placeholder="https://youtube.com/@..."></label>
+        <label class="f">Instagram linki<input id="s_instagramUrl" placeholder="https://instagram.com/..."></label>
+        <label class="f">Sınaq platforması linki<input id="s_examUrl" placeholder="https://exam.rareacademy.az"></label>
+        <label class="f">Təqdimat videosu (YouTube embed və ya .mp4)<input id="s_videoUrl" placeholder="https://www.youtube.com/embed/ID"></label>
+      </div><div class="row"><button class="btn" data-save="contact" type="button">Saxla</button></div></div>
+
+      <div class="card" style="margin-bottom:14px"><h2>Elan paneli və qeydiyyat</h2><div class="form">
+        <label class="chk f wide"><input id="s_annOn" type="checkbox"> Saytın yuxarısında elan göstər</label>
+        <label class="f wide">Elan mətni<input id="s_annText" maxlength="200" placeholder="Yeni qrupların qeydiyyatı başlayıb!"></label>
+        <label class="chk f wide"><input id="s_regOpen" type="checkbox"> Qeydiyyat açıqdır</label>
+        <label class="f wide">Qeydiyyat istiqamətləri (hər sətirdə bir istiqamət)<textarea id="s_programs" rows="8"></textarea></label>
+      </div><p class="hint">Qeydiyyat bağlı olanda ziyarətçi “müvəqqəti dayandırılıb” bildirişi görür. Siyahı boş buraxılsa, standart istiqamətlər qalır.</p>
+      <div class="row"><button class="btn" data-save="reg" type="button">Saxla</button></div></div>
+
+      <div class="card" style="margin-bottom:14px"><h2>Ana səhifə sloqanları (slayder)</h2>
+        <p class="hint">Sətir keçidi yeni sətir yaradır; <b>*söz*</b> həmin sözü rəngli vurğulayır. Boş qalan hissə standart mətnlə qalır.</p>
+        <div class="form" id="slidesF"></div><div class="row"><button class="btn" data-save="slides" type="button">Saxla</button></div></div>
+
+      <div class="card"><h2>Səhifə mətnləri</h2>
+        <p class="hint">Saytın başlıq və mətnləri avtomatik tapılır. Dəyişmək istədiyiniz mətni yazın, boş qoysanız standart mətn qalır.</p>
+        <div class="bar"><input id="tQ" type="search" placeholder="Mətnlərdə axtar…"></div>
+        <div id="textsF"></div><div class="row"><button class="btn" data-save="texts" type="button">Bütün mətnləri saxla</button></div></div>
+    </section>
+  </main>
+</div>
+
+<dialog id="noteDlg"><form method="dialog"><h2 id="noteTitle" style="margin:0 0 10px;font-size:18px"></h2><textarea id="noteText" maxlength="1000"></textarea>
+  <div class="row"><button class="btn ghost" value="cancel" formnovalidate>Ləğv et</button><button class="btn" value="ok">Saxla</button></div></form></dialog>
+<div id="toast" role="status"></div>
+<script type="module" src="admin.js"></script>
+</body>
+</html>

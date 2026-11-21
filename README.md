@@ -14,3 +14,7 @@ Statik sayt (HTML + CSS + JS), build tələb olunmur.
 
 ## Tənzimləmə
 `script.js`-in əvvəlindəki `CONFIG` obyektində sınaq platforması, şəxsi kabinet, sosial şəbəkə, video linkləri və form endpoint-i yazılır. Boş qalan link kliklənəndə “tezliklə” bildirişi göstərilir.
+
+- `consent.js` – kuki icazəsi paneli
+- `functions/` – e-poçt kodu (Cloud Functions), `firebase.json`
+- `admin.html`, `admin.js` – Admin/CEO paneli; `cms.js` – panel ayarlarını sayta tətbiq edir; `firebase-config.js` – Firebase konfiqurasiyası

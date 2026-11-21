@@ -3,8 +3,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
+    // CEO: bu Gmail ilə (təsdiqlənmiş) daxil olan avtomatik tam səlahiyyətlidir
+    function isCeo() {
+      return signedIn() && request.auth.token.email == 'rareacademyy@gmail.com' && request.auth.token.email_verified == true;
+    }
     function isAdmin() {
-      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isCeo() || (signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
     function str(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
     function optStr(v, max) { return v == null || (v is string && v.size() <= max); }
@@ -29,18 +33,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Qeydiyyat müraciətləri: hamı göndərə bilər, oxuyub idarə edən yalnız admin
+    // Qeydiyyat müraciətləri: yalnız təsdiqlənmiş (Google / e-poçt kodu) hesab göndərə bilər, oxuyan yalnız admin
     match /registrations/{id} {
-      allow create: if request.resource.data.keys().hasAll(['fullName','phone','program','source','status','userId','createdAt'])
-        && request.resource.data.keys().hasOnly(['fullName','phone','program','source','status','userId','createdAt'])
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll(['fullName','email','program','source','status','userId','createdAt'])
+        && request.resource.data.keys().hasOnly(['fullName','email','program','source','status','userId','createdAt'])
         && str(request.resource.data.fullName, 3, 120)
-        && str(request.resource.data.phone, 7, 20)
-        && (request.resource.data.program == null || str(request.resource.data.program, 1, 80))
+        && str(request.resource.data.program, 1, 80)
+        && str(request.resource.data.email, 5, 254)
+        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$')
         && request.resource.data.source == 'website'
         && request.resource.data.status == 'new'
-        && (request.resource.data.userId == null || (signedIn() && request.resource.data.userId == request.auth.uid))
+        && request.resource.data.userId == request.auth.uid
         && request.resource.data.createdAt == request.time;
-      allow read, update, delete: if isAdmin();
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);   // öz müraciətini görə bilər
+      allow update, delete: if isAdmin();
     }
 
     // Xəbər abunələri: sənəd ID-si = kiçik hərflə e-poçt (təkrar abunə mümkün deyil)
@@ -55,10 +62,16 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Adminlər yalnız Firebase konsolundan əlavə olunur
+    // Adminlər: yalnız CEO əlavə/silə bilər
     match /admins/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if false;
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isCeo();
+    }
+
+    // Sayt ayarları və mətnləri: hamı oxuyur, yalnız admin dəyişir
+    match /site/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /{document=**} { allow read, write: if false; }
